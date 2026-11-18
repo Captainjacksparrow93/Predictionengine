@@ -1,0 +1,21 @@
+# Render Blueprint: New > Blueprint > pick this repo.
+services:
+  - type: web
+    name: nifty-astro-engine
+    runtime: docker
+    plan: standard          # 2 GB RAM; "starter" (512 MB) is too small for intraday bars
+    region: singapore       # closest Render region to India
+    healthCheckPath: /healthz
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 2
+    envVars:
+      - key: DATA_DIR
+        value: /data
+      - key: APP_TOKEN
+        generateValue: true  # read it from the Render dashboard, paste into the UI
+      - key: KITE_API_KEY
+        sync: false
+      - key: KITE_ACCESS_TOKEN
+        sync: false
