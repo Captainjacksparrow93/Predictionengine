@@ -124,6 +124,47 @@ mapping. You can also upload a CSV with `timestamp,close` columns.
 
 When the server has `APP_TOKEN` set, every `/api` call needs the header `X-App-Token`.
 
+## Deploying on your own VPS (e.g. Hostinger) with Docker
+
+`docker-compose.yml` runs the app behind Caddy, which gets and renews HTTPS
+certificates automatically.
+
+1. Optional, for HTTPS: point a domain at the VPS. In your DNS, add an **A
+   record**, e.g. `astro.yourdomain.com` → your VPS IP.
+2. On the VPS (via SSH), get the code and configure it:
+
+   ```bash
+   git clone -b claude/wonderful-goldberg-en15qi https://github.com/captainjacksparrow93/predictionengine.git
+   ```
+
+   ```bash
+   cd predictionengine && cp .env.example .env && nano .env
+   ```
+
+   Set `DOMAIN` (or `:80` if you have no domain yet), a long random `APP_TOKEN`
+   (`openssl rand -hex 24`), and your Kite keys.
+3. Open the firewall (Hostinger panel → VPS → Firewall, and/or `ufw`) for ports 80 and 443, then start:
+
+   ```bash
+   docker compose up -d --build
+   ```
+
+4. Open `https://astro.yourdomain.com` (or `http://<VPS-IP>`), paste `APP_TOKEN`
+   into the "App token" box, and fetch or upload data.
+
+Day-to-day:
+
+| Task | Command |
+|---|---|
+| Update the daily Kite access token | edit `.env`, then `docker compose up -d` |
+| Update to new code | `git pull && docker compose up -d --build` |
+| Logs | `docker compose logs -f app` |
+| Back up data | `docker run --rm -v predictionengine_astro_data:/d -v $PWD:/b alpine tar czf /b/astro-backup.tgz -C /d .` |
+
+Price history and results live in the `astro_data` Docker volume, so they
+survive restarts and rebuilds. Use `docker compose down -v` only if you want to
+erase them.
+
 ## Deployment
 
 The app is a single Docker container that needs a small persistent disk

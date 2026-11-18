@@ -1,0 +1,6 @@
+# DOMAIN comes from .env. Use a real domain (e.g. astro.example.com) for automatic
+# HTTPS, or ":80" to serve plain HTTP on the VPS IP address.
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy app:8000
+}
