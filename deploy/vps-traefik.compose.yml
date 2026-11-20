@@ -1,14 +1,17 @@
 # Compose file for a VPS that already runs Traefik (Hostinger "Ubuntu with n8n"
 # template: Traefik owns ports 80/443 on the external network "n8n_default").
-# The image is built straight from the public GitHub repo, so this file alone
-# is enough for Hostinger's Docker Manager. Secrets come from the project's
-# environment variables: APP_TOKEN (required), KITE_API_KEY, KITE_ACCESS_TOKEN.
+#
+# No image build is needed: the stock Python image downloads this repo's branch
+# from GitHub on start, installs requirements and runs the app. That works with
+# Hostinger's Docker Manager, which accepts only a compose file. A restart
+# picks up the latest pushed code.
+#
+# Secrets come from the project's environment variables:
+#   APP_TOKEN (required), KITE_API_KEY, KITE_ACCESS_TOKEN
 name: astro-engine
 services:
   app:
-    build:
-      context: https://github.com/captainjacksparrow93/predictionengine.git#claude/wonderful-goldberg-en15qi
-    image: astro-engine:latest
+    image: python:3.12-slim
     restart: unless-stopped
     environment:
       DATA_DIR: /data
@@ -16,6 +19,19 @@ services:
       KITE_API_KEY: ${KITE_API_KEY:-}
       KITE_ACCESS_TOKEN: ${KITE_ACCESS_TOKEN:-}
       TZ: Asia/Kolkata
+      PYTHONUNBUFFERED: "1"
+      SOURCE_URL: https://codeload.github.com/captainjacksparrow93/predictionengine/tar.gz/refs/heads/claude/wonderful-goldberg-en15qi
+    working_dir: /app
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        echo "downloading app source"
+        python -c "import io,os,tarfile,urllib.request; t=tarfile.open(fileobj=io.BytesIO(urllib.request.urlopen(os.environ['SOURCE_URL']).read())); ms=[m for m in t.getmembers() if '/' in m.name]; [setattr(m,'name',m.name.split('/',1)[1]) for m in ms]; t.extractall('/app', members=ms, filter='data')"
+        echo "installing requirements"
+        pip install --no-cache-dir -q --root-user-action=ignore -r requirements.txt
+        exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers
     volumes:
       - astro_data:/data
     mem_limit: 2g
@@ -26,6 +42,7 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+      start_period: 240s
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=n8n_default"
