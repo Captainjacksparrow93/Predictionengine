@@ -26,6 +26,11 @@ def analyze(close: pd.Series, settings: dict | None = None) -> dict:
     t0 = time.time()
     bars = to_bars(close, s["bar"])
     fwd = forward_returns(bars, s["bar"], int(s["horizon"]))
+    if int(s["horizon"]) > 1:
+        # Returns over h bars measured from every bar overlap, so one market move is
+        # counted h times and every significance test becomes overconfident.
+        # Keep only non-overlapping windows.
+        fwd = fwd.iloc[:: int(s["horizon"])]
     lab = labels(fwd, float(s["threshold_pct"]) / 100.0)
     fcfg = FeatureConfig.from_dict(s["features"])
     mcfg = MinerConfig.from_dict(s["miner"])

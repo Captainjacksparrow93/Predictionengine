@@ -34,3 +34,10 @@ def test_planted_effect_is_found():
 def test_intraday_bars_run(noise):
     m = analyze(noise.loc["2016-01-01":"2017-06-30"], {"bar": "60min", "miner": {"max_depth": 1, "null_runs": 0}})
     assert m["result"]["bars"] > 1000
+
+
+def test_multi_bar_horizon_uses_non_overlapping_windows(noise):
+    one = analyze(noise, {"bar": "1D", "horizon": 1, "miner": {"max_depth": 1, "null_runs": 0}})
+    five = analyze(noise, {"bar": "1D", "horizon": 5,
+                           "miner": {"max_depth": 1, "null_runs": 0, "min_support": 10, "min_support_validation": 4}})
+    assert abs(five["result"]["bars"] * 5 - one["result"]["bars"]) <= 10
