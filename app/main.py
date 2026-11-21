@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from astro_engine import storage
 from astro_engine.data_sources import PRESETS, ApiSource, fetch_api, missing_env, read_csv_bytes
 from astro_engine.ephemeris import BODIES, NAKSHATRAS, SIGNS, compute_positions, nakshatra_index, sign_index
+from astro_engine import hf_dataset
 from astro_engine.forecast import astro_events, forecast
 from astro_engine.market import MARKET_TZ
 from astro_engine.pipeline import DEFAULT_SETTINGS, analyze
@@ -47,7 +48,7 @@ def _run_job(kind: str, fn) -> dict:
 
     def target():
         try:
-            out = fn()
+            out = fn(lambda msg: _job.update(progress=msg))
             _job.update(state="done", result=out)
         except Exception as e:  # noqa: BLE001 - surfaced to the UI
             _job.update(state="error", error=str(e), trace=traceback.format_exc(limit=3))
@@ -99,9 +100,11 @@ def fetch(req: FetchReq):
     if missing := missing_env(src):
         raise HTTPException(400, f"set these environment variables on the server: {', '.join(missing)}")
 
-    def work():
+    def work(progress):
+        progress("Downloading from your API")
         s = fetch_api(src, req.start, req.end)
         full = storage.save_prices(s)
+        _set_dataset(src.name or "custom API", src.name or "Custom API", "your data API")
         return {"fetched_minutes": len(s), "stored_minutes": len(full)}
 
     return _run_job("fetch", work)
@@ -115,6 +118,7 @@ async def upload(file: UploadFile = File(...), replace: bool = False):
     except Exception as e:  # noqa: BLE001
         raise HTTPException(400, f"could not read CSV: {e}") from e
     full = storage.save_prices(s, merge=not replace)
+    _set_dataset(file.filename or "upload", file.filename or "Uploaded file", "CSV upload")
     return {"uploaded_minutes": len(s), "stored_minutes": len(full)}
 
 
@@ -130,7 +134,10 @@ def data_summary():
     if s is None or s.empty:
         return {"minutes": 0}
     daily = s.groupby(s.index.normalize()).last()
+    intraday = s[(s.index.hour != 15) | (s.index.minute != 30)]
     return {
+        "dataset": storage.load_json("dataset.json"),
+        "intraday_from": str(intraday.index[0]) if len(intraday) > 1000 else None,
         "minutes": int(len(s)),
         "days": int(len(daily)),
         "first": str(s.index[0]),
@@ -151,19 +158,73 @@ def run_analysis(settings: dict):
     if s is None or s.empty:
         raise HTTPException(400, "no price data loaded")
 
-    def work():
+    ds = storage.load_json("dataset.json") or {}
+    label = settings.pop("label", None)
+
+    def work(progress):
+        progress("Calculating planet positions and testing every combination")
         model = analyze(s, settings)
+        model["dataset"] = ds
+        model["label"] = label
+        model["created"] = pd.Timestamp.now(tz=MARKET_TZ).isoformat()
         storage.save_json("model.json", model)
         r = model["result"]
+        hist = storage.load_json("history.json") or []
+        hist.insert(0, {
+            "created": model["created"], "label": label, "market": ds.get("name"),
+            "zodiac": model["settings"]["zodiac"], "bar": model["settings"]["bar"],
+            "tested": r["search"]["hypotheses_tested"], "validated": r["search"]["validated_non_redundant"],
+            "chance": r["null_control"]["mean"], "level": r["verdict_level"], "verdict": r["verdict"],
+        })
+        storage.save_json("history.json", hist[:50])
         return {"search": r["search"], "verdict": r["verdict"], "runtime_seconds": model["runtime_seconds"]}
 
     return _run_job("analyze", work)
 
 
+@app.get("/api/history", dependencies=auth)
+def history():
+    return storage.load_json("history.json") or []
+
+
+@app.get("/api/catalog", dependencies=auth)
+def get_catalog():
+    try:
+        return hf_dataset.catalog()
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(502, f"could not reach the market-data library: {e}") from e
+
+
+class HfReq(BaseModel):
+    symbol: str
+
+
+@app.post("/api/data/load_hf", dependencies=auth)
+def load_hf(req: HfReq):
+    entry = next((c for c in hf_dataset.catalog() if c["symbol"] == req.symbol), None)
+    if entry is None:
+        raise HTTPException(404, f"unknown symbol {req.symbol}")
+
+    def work(progress):
+        s = hf_dataset.load_symbol(req.symbol, progress)
+        progress("Saving")
+        storage.save_prices(s, merge=False)
+        _set_dataset(req.symbol, entry["name"], hf_dataset.SOURCE_NAME)
+        storage.save_json("model.json", None)
+        return {"symbol": req.symbol, "stored_minutes": len(s)}
+
+    return _run_job("load", work)
+
+
+def _set_dataset(symbol: str, name: str, source: str) -> None:
+    storage.save_json("dataset.json", {"symbol": symbol, "name": name, "source": source,
+                                       "loaded": pd.Timestamp.now(tz=MARKET_TZ).isoformat()})
+
+
 @app.get("/api/model", dependencies=auth)
 def get_model(rules: str = "all", limit: int = 300):
     m = storage.load_json("model.json")
-    if m is None:
+    if not m:
         raise HTTPException(404, "no analysis has been run yet")
     rr = m["result"]["rules"]
     if rules != "all":
@@ -176,7 +237,7 @@ def get_model(rules: str = "all", limit: int = 300):
 @app.get("/api/forecast", dependencies=auth)
 def get_forecast(start: str, end: str, include: str = "validated"):
     m = storage.load_json("model.json")
-    if m is None:
+    if not m:
         raise HTTPException(404, "run an analysis first")
     if pd.Timestamp(end) - pd.Timestamp(start) > pd.Timedelta(days=800):
         raise HTTPException(400, "forecast range is limited to ~2 years")

@@ -244,6 +244,21 @@ def _discover_validate(X, up, down, r, d_end, v_end, cfg: MinerConfig, detail: b
     }
     if not detail:
         return summary, None
+    # "Luck meter": how many very small p-values appeared vs. how many pure chance gives.
+    sup_p = np.concatenate([p_bull[supported], p_bear[supported]])
+    summary["luck"] = {
+        "threshold": 1e-3,
+        "observed": int((sup_p < 1e-3).sum()),
+        "expected_by_chance": round(n_tests * 1e-3, 1),
+    }
+    # The best-looking combinations, whatever their fate, so people can see what
+    # "looked like a pattern" and what happened to it on newer data.
+    best = []
+    for direction, pv in (("bullish", p_bull), ("bearish", p_bear)):
+        for idx in np.argsort(pv)[:20]:
+            if supported[idx]:
+                best.append({"combo": cands.combos[int(idx)], "direction": direction, "p_discovery": float(pv[idx])})
+    summary["_best"] = best
     return summary, results
 
 
@@ -346,6 +361,16 @@ def mine(features: pd.DataFrame, fwd: pd.Series, lab: pd.Series, cfg: MinerConfi
     for r_ in rules:
         r_.pop("_cols")
     ts = F.index
+    best = []
+    for b in summary.pop("_best"):
+        v = _combo_vec(X, b["combo"])
+        hit = up if b["direction"] == "bullish" else down
+        def rate(a, e):
+            m = int(v[a:e].sum())
+            return {"days": m, "rate": float(hit[a:e][v[a:e]].mean()) if m else None,
+                    "normal_rate": float(hit[a:e].mean())}
+        best.append({"conditions": [names[c] for c in b["combo"]], "direction": b["direction"],
+                     "p_discovery": b["p_discovery"], "past": rate(0, d_end), "later": rate(d_end, n)})
     return {
         "config": asdict(cfg),
         "bars": n,
@@ -363,7 +388,9 @@ def mine(features: pd.DataFrame, fwd: pd.Series, lab: pd.Series, cfg: MinerConfi
         },
         "test": test,
         "verdict": _verdict(summary["validated"], null_counts, test),
+        "verdict_level": _verdict_level(summary["validated"], null_counts, test),
         "rules": rules,
+        "best_looking": best,
     }
 
 
@@ -414,6 +441,18 @@ def _evaluate_test(X, y, r, validated: list[dict]) -> dict:
         "strategy_return_pct": float((np.prod(1 + strat) - 1) * 100),
         "buy_and_hold_return_pct": float((np.prod(1 + r) - 1) * 100),
     }
+
+
+def _verdict_level(n_valid: int, null_counts: list[int], test: dict) -> str:
+    """none | luck | unconfirmed | promising  (drives the traffic light in the UI)."""
+    null_mean = float(np.mean(null_counts)) if null_counts else 0.0
+    if n_valid == 0:
+        return "none"
+    if n_valid <= max(null_counts or [0]) or n_valid < 2 * null_mean:
+        return "luck"
+    if test.get("signals", 0) and test.get("p_value", 1) < 0.05 and test["hit_rate"] > test["chance_hit_rate"]:
+        return "promising"
+    return "unconfirmed"
 
 
 def _verdict(n_valid: int, null_counts: list[int], test: dict) -> str:

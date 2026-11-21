@@ -3,317 +3,589 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nifty Astro Engine</title>
+<title>Planet Market Finder</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-:root{--bg:#f7f7f5;--panel:#fff;--ink:#1b1d21;--muted:#6b7078;--line:#e3e3df;--accent:#3b5bdb;--pos:#1f8a4c;--neg:#c92a2a;--neu:#9aa0a6;--chip:#eef1fb}
-@media (prefers-color-scheme:dark){:root{--bg:#121316;--panel:#1b1d21;--ink:#e8e9ec;--muted:#9a9fa8;--line:#2c2f35;--accent:#7c96ff;--pos:#4cc47f;--neg:#ff6b6b;--neu:#6b7078;--chip:#252a3a}}
+:root{
+  --bg:#f5f4f0;--panel:#ffffff;--ink:#1d1f24;--muted:#646a73;--line:#e4e2dc;--soft:#f0eee8;
+  --accent:#4a4fd8;--accent-ink:#fff;--accent-soft:#ecedfd;
+  --up:#1e8a4c;--up-soft:#e3f4ea;--down:#c2382b;--down-soft:#fbe7e4;
+  --amber:#b7791f;--amber-soft:#fdf3dc;--grey:#5b6470;--grey-soft:#eceef1;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121317;--panel:#1b1d23;--ink:#ebecef;--muted:#9aa0aa;--line:#2b2e36;--soft:#22252c;
+  --accent:#8b90ff;--accent-ink:#11122a;--accent-soft:#262a4a;
+  --up:#4cc47f;--up-soft:#173325;--down:#ff7a6b;--down-soft:#3a1e1b;
+  --amber:#f0b44c;--amber-soft:#3a2e15;--grey:#a8b0bb;--grey-soft:#262a31}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-header{padding:20px 16px 8px;max-width:1180px;margin:auto;display:flex;flex-wrap:wrap;gap:12px;align-items:baseline;justify-content:space-between}
-h1{font-size:20px;margin:0}
-h2{font-size:16px;margin:0 0 12px}
-main{max-width:1180px;margin:auto;padding:0 16px 40px;display:grid;gap:16px}
-section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0}
-.row{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
-label{display:flex;flex-direction:column;font-size:12px;color:var(--muted);gap:4px}
-input,select,textarea,button{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
-textarea{width:100%;min-height:210px;font-family:ui-monospace,Menlo,monospace;font-size:12px}
-button{background:var(--accent);color:#fff;border:0;cursor:pointer;padding:7px 14px}
-button.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--accent)}
+.wrap{max-width:980px;margin:auto;padding:0 16px}
+header{padding:22px 0 6px}
+header .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+h1{font-size:24px;margin:0;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:4px 0 0;font-size:15px}
+nav.steps{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 4px}
+nav.steps a{flex:1 1 140px;text-decoration:none;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:14px}
+nav.steps a b{display:block;color:var(--ink);font-size:15px}
+section.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;margin:16px 0;min-width:0}
+.stephead{display:flex;gap:12px;align-items:flex-start;margin-bottom:12px}
+.num{flex:none;width:32px;height:32px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:700}
+h2{font-size:20px;margin:2px 0 0}
+.hint{color:var(--muted);font-size:14px;margin:2px 0 0}
+button{font:inherit;cursor:pointer;border-radius:10px;border:0;padding:11px 18px;background:var(--accent);color:var(--accent-ink);font-weight:600}
+button.secondary{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+button.link{background:none;color:var(--accent);padding:0;font-weight:500;text-decoration:underline}
 button:disabled{opacity:.5;cursor:default}
-.muted{color:var(--muted)}
-.note{font-size:12px;color:var(--muted);margin:8px 0 0}
-.verdict{padding:10px 12px;border-left:4px solid var(--accent);background:var(--chip);border-radius:4px;margin:10px 0}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0}
-.kpi{border:1px solid var(--line);border-radius:8px;padding:8px 10px}
-.kpi b{display:block;font-size:18px}
-.kpi span{font-size:12px;color:var(--muted)}
-.tablewrap{overflow-x:auto;max-height:520px;overflow-y:auto}
-table{border-collapse:collapse;width:100%;font-size:13px}
-th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
-th{position:sticky;top:0;background:var(--panel);font-weight:600}
-.pos{color:var(--pos);font-weight:600}.neg{color:var(--neg);font-weight:600}.neu{color:var(--neu)}
-.chip{display:inline-block;background:var(--chip);border-radius:4px;padding:1px 6px;margin:1px 2px 1px 0;font-size:12px}
-.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
-.tabs button{background:transparent;color:var(--muted);border:1px solid var(--line)}
-.tabs button.on{color:var(--ink);border-color:var(--accent)}
-.status{font-size:12px;color:var(--muted);min-height:18px}
-.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
-canvas{max-height:260px}
-.cal{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:4px}
-.day{border-radius:6px;padding:6px;font-size:12px;border:1px solid var(--line);cursor:default}
-.day.POSITIVE{background:color-mix(in srgb,var(--pos) 18%,transparent)}
-.day.NEGATIVE{background:color-mix(in srgb,var(--neg) 18%,transparent)}
-details summary{cursor:pointer;color:var(--accent)}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;max-width:100%}
+textarea{width:100%;min-height:200px;font:13px ui-monospace,Menlo,monospace}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.grow{flex:1 1 260px}
+.current{display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:14px;border-radius:12px;background:var(--soft)}
+.current .big{font-size:20px;font-weight:700}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:13px;background:var(--grey-soft);color:var(--grey)}
+.choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:8px 0 14px}
+.choice{text-align:left;background:var(--bg);color:var(--ink);border:2px solid var(--line);padding:14px;font-weight:400;border-radius:12px}
+.choice b{display:block;margin-bottom:4px;font-size:16px}
+.choice span{color:var(--muted);font-size:14px}
+.choice.on{border-color:var(--accent);background:var(--accent-soft)}
+.choice:disabled{opacity:.45}
+.toggle{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.toggle button{background:transparent;color:var(--muted);border-radius:0;padding:9px 14px;font-weight:500}
+.toggle button.on{background:var(--accent);color:var(--accent-ink)}
+.label{font-size:14px;color:var(--muted);margin:10px 0 6px}
+.progress{margin-top:14px;padding:14px;border-radius:12px;background:var(--accent-soft);display:none}
+.progress .bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:8px}
+.progress .bar i{display:block;height:100%;width:35%;background:var(--accent);border-radius:3px;animation:slide 1.4s ease-in-out infinite}
+@keyframes slide{0%{margin-left:-35%}100%{margin-left:100%}}
+.err{color:var(--down);font-size:14px;margin-top:8px}
+.verdict{border-radius:14px;padding:18px 20px;display:flex;gap:16px;align-items:flex-start}
+.verdict .light{flex:none;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;font-size:26px;color:#fff}
+.verdict h3{margin:0 0 4px;font-size:21px}
+.verdict p{margin:0}
+.v-none{background:var(--grey-soft)}.v-none .light{background:var(--grey)}
+.v-luck,.v-unconfirmed{background:var(--amber-soft)}.v-luck .light,.v-unconfirmed .light{background:var(--amber)}
+.v-promising{background:var(--up-soft)}.v-promising .light{background:var(--up)}
+h4{font-size:17px;margin:22px 0 8px}
+.funnel{display:grid;gap:8px}
+.frow{display:grid;grid-template-columns:minmax(150px,260px) 1fr;gap:12px;align-items:center}
+.frow .t{font-size:14px}
+.frow .t small{display:block;color:var(--muted)}
+.fbar{height:30px;border-radius:8px;background:var(--soft);position:relative;overflow:hidden}
+.fbar i{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:8px;min-width:4px}
+.fbar.luck i{background:var(--amber)}
+.fbar span{position:absolute;left:10px;top:4px;font-weight:700;font-size:15px;color:var(--ink);mix-blend-mode:normal}
+.fbar i + span{color:var(--ink)}
+.timeline{display:flex;border-radius:10px;overflow:hidden;font-size:13px;margin-top:6px}
+.timeline div{padding:8px 10px;min-width:0}
+.timeline b{display:block;font-size:13px}
+.t1{background:var(--accent-soft)}.t2{background:var(--amber-soft)}.t3{background:var(--up-soft)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.pcard{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--bg)}
+.pcard .sentence{font-size:15px;margin-bottom:10px}
+.pcard .glyphs{font-size:20px;letter-spacing:2px;margin-bottom:4px}
+.cmp{display:grid;grid-template-columns:110px 1fr 46px;gap:8px;align-items:center;font-size:13px;margin:4px 0}
+.cmp .b{height:14px;background:var(--soft);border-radius:7px;position:relative}
+.cmp .b i{position:absolute;inset:0 auto 0 0;border-radius:7px}
+.cmp .b em{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.55}
+.tag{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:6px;margin-top:6px}
+.tag.fall{background:var(--down-soft);color:var(--down)}.tag.faded{background:var(--grey-soft);color:var(--grey)}.tag.held{background:var(--up-soft);color:var(--up)}.tag.gone{background:var(--amber-soft);color:var(--amber)}
+ul.take{padding-left:20px;margin:6px 0}
+ul.take li{margin:6px 0}
+.cal{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:6px}
+.day{border-radius:10px;padding:8px;font-size:13px;border:1px solid var(--line);background:var(--bg)}
+.day b{display:block;font-size:14px}
+.day.POSITIVE{background:var(--up-soft);border-color:transparent}
+.day.NEGATIVE{background:var(--down-soft);border-color:transparent}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin:8px 0}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:13px}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.planets{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}
+.planet{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);font-size:14px}
+.planet .g{font-size:22px;line-height:1}
+.planet b{font-size:15px}
+.retro{color:var(--down);font-weight:600;font-size:12px}
+details{margin-top:14px}
+details summary{cursor:pointer;color:var(--accent);font-weight:600}
+.empty{color:var(--muted);padding:14px;border:1px dashed var(--line);border-radius:12px;text-align:center}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;place-items:center;padding:16px;z-index:10}
+.modal.open{display:grid}
+.modal .box{background:var(--panel);border-radius:14px;padding:22px;max-width:640px;width:100%;max-height:86vh;overflow:auto}
+dl.gloss dt{font-weight:700;margin-top:12px}
+dl.gloss dd{margin:2px 0 0;color:var(--muted)}
+canvas{max-height:240px}
+footer{color:var(--muted);font-size:13px;padding:10px 0 40px}
+@media (max-width:560px){.frow{grid-template-columns:1fr}.verdict{flex-direction:column}}
 </style>
 </head>
 <body>
+<div class="wrap">
 <header>
-  <h1>Nifty 50 Astro Prediction Engine</h1>
-  <label>App token (if the server sets APP_TOKEN)<input id="token" type="password" placeholder="optional" style="width:200px"></label>
+  <div class="top">
+    <div>
+      <h1>🪐 Planet Market Finder</h1>
+      <p class="sub">Checks whether planetary positions have ever lined up with the market going up or down, and keeps you honest about luck.</p>
+    </div>
+    <div class="row">
+      <button class="secondary" id="helpBtn">What do these words mean?</button>
+    </div>
+  </div>
+  <nav class="steps">
+    <a href="#step1"><b>1 · Market</b>Choose what to study</a>
+    <a href="#step2"><b>2 · Question</b>What to find out</a>
+    <a href="#step3"><b>3 · Answer</b>What we found</a>
+    <a href="#step4"><b>4 · Ahead</b>Upcoming planets</a>
+  </nav>
 </header>
-<main>
 
-<section>
-  <h2>1 · Historical minute data</h2>
-  <div class="grid2">
-    <div>
-      <div class="row">
-        <label>Preset<select id="preset"></select></label>
-        <button class="ghost" id="loadPreset">Load preset</button>
-        <button id="saveSource">Save API config</button>
-      </div>
-      <p class="note">Put secrets in server environment variables and reference them as <code>${NAME}</code>; they are never stored in the config. Array candles use index numbers for fields (Kite: timestamp "0", close "4").</p>
-      <textarea id="source" spellcheck="false"></textarea>
-      <div class="row" style="margin-top:8px">
-        <label>From<input id="fFrom" type="date" value="2015-01-01"></label>
-        <label>To<input id="fTo" type="date"></label>
-        <button id="fetchBtn">Fetch from API</button>
-      </div>
-      <div class="status" id="srcStatus"></div>
-    </div>
-    <div>
-      <div class="row">
-        <label>…or upload CSV (timestamp, close)<input id="csv" type="file" accept=".csv,.txt"></label>
-        <label><span><input id="csvReplace" type="checkbox"> replace existing</span></label>
-        <button id="uploadBtn">Upload</button>
-        <button class="ghost" id="clearBtn">Clear data</button>
-      </div>
-      <div class="status" id="dataStatus"></div>
-      <canvas id="priceChart"></canvas>
-    </div>
-  </div>
-</section>
-
-<section>
-  <h2>2 · Find planetary combinations behind rises and falls</h2>
+<section class="card" id="step1">
+  <div class="stephead"><div class="num">1</div><div><h2>Which market do you want to study?</h2><p class="hint">Price history comes from a free public library of Indian market data (NSE), updated monthly.</p></div></div>
+  <div class="current" id="current"><span class="hint">Loading…</span></div>
+  <canvas id="priceChart" style="margin-top:12px"></canvas>
+  <div class="label">Study a different market</div>
   <div class="row">
-    <label>Bar<select id="bar"><option>1D</option><option>60min</option><option>30min</option><option>15min</option></select></label>
-    <label>Horizon (bars ahead)<input id="horizon" type="number" value="1" min="1" style="width:90px"></label>
-    <label>Move threshold %<input id="threshold" type="number" value="0" step="0.05" style="width:90px"></label>
-    <label>Zodiac<select id="zodiac"><option value="sidereal">Sidereal (Lahiri / Vedic)</option><option value="tropical">Tropical (Western)</option></select></label>
-    <label>Combination depth<select id="depth"><option value="1">1 · single</option><option value="2" selected>2 · pairs (all)</option><option value="3">3 · triples (beam)</option></select></label>
-    <label>Min bars<input id="minSupport" type="number" placeholder="auto" style="width:80px"></label>
-    <label>FDR α<input id="alpha" type="number" value="0.05" step="0.01" style="width:80px"></label>
-    <label>Null runs<input id="nullRuns" type="number" value="3" min="0" max="20" style="width:80px"></label>
-    <button id="runBtn">Run analysis</button>
+    <input class="grow" id="symbolSearch" list="symbolList" placeholder="Type a name, e.g. Nifty Bank, Reliance, Nifty IT…" autocomplete="off">
+    <datalist id="symbolList"></datalist>
+    <button id="loadBtn">Load this market</button>
   </div>
-  <details style="margin-top:8px"><summary>Conditions included</summary>
-    <p class="note">Each of 12 bodies (Sun → Pluto, Rahu, Ketu) in each sign and nakshatra; retrograde for Mercury → Pluto; conjunction / sextile / square / trine / opposition for every pair; all 30 tithis and both pakshas. Optionally aspects to a natal chart (pass <code>features.natal_longitudes</code> via the API). Every combination tested counts toward the false-discovery correction.</p>
+  <div class="row" id="popular" style="margin-top:10px"></div>
+  <div class="progress" id="loadProg"><span id="loadMsg">Working…</span><div class="bar"><i></i></div></div>
+  <div class="err" id="loadErr"></div>
+  <details><summary>Use my own broker data instead</summary>
+    <p class="hint">Upload a CSV file with two columns, <code>timestamp</code> and <code>close</code>, or connect a broker API such as Zerodha Kite.</p>
+    <div class="row"><input id="csv" type="file" accept=".csv,.txt"><button class="secondary" id="uploadBtn">Upload file</button></div>
+    <div class="label">Broker API settings (for technical users)</div>
+    <div class="row"><select id="preset"></select><button class="secondary" id="loadPreset">Fill in example</button><button class="secondary" id="saveSource">Save settings</button></div>
+    <textarea id="source" spellcheck="false" style="margin-top:8px"></textarea>
+    <div class="row" style="margin-top:8px"><label class="hint">From <input id="fFrom" type="date" value="2022-01-01"></label><label class="hint">To <input id="fTo" type="date"></label><button class="secondary" id="fetchBtn">Download from API</button></div>
+    <div class="err" id="srcMsg"></div>
   </details>
-  <div class="status" id="runStatus"></div>
-  <div id="results"></div>
 </section>
 
-<section>
-  <h2>3 · Forecast from future planetary positions</h2>
+<section class="card" id="step2">
+  <div class="stephead"><div class="num">2</div><div><h2>What do you want to find out?</h2><p class="hint">Pick a question. The app then tests every planetary combination against the price history.</p></div></div>
+  <div class="choices" id="questions"></div>
+  <div class="label">Astrology system</div>
+  <div class="toggle" id="zodiac"><button data-v="sidereal" class="on">Vedic (Indian)</button><button data-v="tropical">Western</button></div>
+  <div class="label">How thorough?</div>
+  <div class="toggle" id="depth"><button data-v="2" class="on">Standard · pairs of conditions</button><button data-v="3">Deep · also groups of three</button></div>
+  <div style="margin-top:18px"><button id="runBtn">🔍 Find patterns</button></div>
+  <div class="progress" id="runProg"><span id="runMsg">Working…</span><div class="bar"><i></i></div></div>
+  <div class="err" id="runErr"></div>
+</section>
+
+<section class="card" id="step3">
+  <div class="stephead"><div class="num">3</div><div><h2>What we found</h2><p class="hint" id="answerFor">Run a check in step 2 to see the answer here.</p></div></div>
+  <div id="answer"><div class="empty">No answer yet.</div></div>
+</section>
+
+<section class="card" id="step4">
+  <div class="stephead"><div class="num">4</div><div><h2>Looking ahead</h2><p class="hint">Where the planets will be, and what the patterns that passed every check would say.</p></div></div>
   <div class="row">
-    <label>From<input id="pFrom" type="date"></label>
-    <label>To<input id="pTo" type="date"></label>
-    <label>Rules<select id="pInclude"><option value="validated">Validated only</option><option value="all">All discovered (exploratory)</option></select></label>
-    <button id="forecastBtn">Forecast</button>
+    <label class="hint">From <input id="pFrom" type="date"></label>
+    <label class="hint">To <input id="pTo" type="date"></label>
+    <button class="secondary" id="forecastBtn">Show</button>
   </div>
-  <div class="status" id="fcStatus"></div>
-  <div id="forecast"></div>
-  <h2 style="margin-top:18px">Upcoming planetary events</h2>
-  <div class="tablewrap" style="max-height:320px"><table id="events"></table></div>
+  <div id="forecast" style="margin-top:14px"></div>
+  <h4>Planets right now</h4>
+  <div class="planets" id="planets"></div>
+  <div class="row" style="justify-content:space-between;margin-top:22px"><h4 style="margin:0">Upcoming planetary events</h4><label class="hint"><input type="checkbox" id="allEvents"> Show every angle between planets</label></div>
+  <div class="tablewrap"><table id="events"></table></div>
 </section>
 
-<section>
-  <h2>Current planetary positions</h2>
-  <div class="tablewrap"><table id="positions"></table></div>
+<section class="card" id="past">
+  <div class="stephead"><div class="num">↺</div><div><h2>Your past checks</h2><p class="hint">Every question you have asked, so you can compare.</p></div></div>
+  <div class="tablewrap"><table id="history"></table></div>
 </section>
 
-</main>
+<footer>Patterns from the past do not guarantee anything about the future. This tool is for research, not financial advice.</footer>
+</div>
+
+<div class="modal" id="login"><div class="box">
+  <h2>Enter your app password</h2>
+  <p class="hint">You only need to do this once on this device. Find it in Hostinger: VPS → Docker Manager → astro-engine → Environment → <code>APP_TOKEN</code>.</p>
+  <div class="row" style="margin-top:12px"><input class="grow" id="tokenInput" type="password" placeholder="App password"><button id="tokenSave">Continue</button></div>
+  <div class="err" id="loginErr"></div>
+</div></div>
+
+<div class="modal" id="help"><div class="box">
+  <div class="row" style="justify-content:space-between"><h2>Plain-language guide</h2><button class="secondary" id="helpClose">Close</button></div>
+  <dl class="gloss">
+    <dt>Sign</dt><dd>The sky is divided into 12 equal parts (Aries, Taurus …). "Jupiter in Taurus" means Jupiter is in that part of the sky.</dd>
+    <dt>Nakshatra</dt><dd>The Vedic system also divides the sky into 27 smaller parts called nakshatras (Ashwini, Rohini …). The Moon passes through one roughly every day.</dd>
+    <dt>Retrograde</dt><dd>A planet seen from Earth sometimes appears to move backwards for a few weeks. Mercury does this about three times a year.</dd>
+    <dt>Together (conjunction)</dt><dd>Two planets in nearly the same spot in the sky.</dd>
+    <dt>60° apart (sextile) · 120° apart (trine)</dt><dd>Angles traditionally read as easy or harmonious.</dd>
+    <dt>90° apart (square) · opposite (180°)</dt><dd>Angles traditionally read as tense or challenging.</dd>
+    <dt>Rahu and Ketu</dt><dd>The two points where the Moon's path crosses the Sun's path; eclipses happen near them. They are always exactly opposite each other.</dd>
+    <dt>Tithi and paksha</dt><dd>The lunar day (1–30). Shukla paksha is the waxing (growing) Moon, Krishna paksha the waning Moon.</dd>
+    <dt>Vedic vs Western</dt><dd>The two systems place the signs about 24° apart. Vedic follows the stars (Lahiri), Western follows the seasons.</dd>
+    <dt>Learning years, checking years, final test</dt><dd>The history is split in three. Patterns are searched for only in the oldest part. A pattern counts only if it keeps working in the newer years it has never seen, the way a real effect would.</dd>
+    <dt>Luck check</dt><dd>We run the same search on the same prices, deliberately shifted in time so the planets cannot possibly match them. Whatever that search "finds" is pure luck. Real patterns must clearly beat it.</dd>
+    <dt>Why so strict?</dt><dd>When you test tens of thousands of combinations, some will look impressive by pure chance, the way someone among thousands of coin-tossers will flip ten heads in a row. The checks separate real patterns from those lucky streaks.</dd>
+  </dl>
+</div></div>
+
 <script>
 const $ = id => document.getElementById(id);
 const store = { get(k){ try { return localStorage.getItem(k) } catch { return null } }, set(k,v){ try { localStorage.setItem(k,v) } catch {} } };
-$('token').value = store.get('token') || '';
-$('token').onchange = () => store.set('token', $('token').value);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pct = v => v == null ? '–' : Math.round(v*100) + '%';
+const fmt = n => n == null ? '–' : Number(n).toLocaleString('en-IN');
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const today = new Date().toISOString().slice(0,10);
 const plus = d => new Date(Date.now()+d*864e5).toISOString().slice(0,10);
-$('fTo').value = today; $('pFrom').value = today; $('pTo').value = plus(90);
+$('fTo').value = today; $('pFrom').value = today; $('pTo').value = plus(60);
 
+// ---------------------------------------------------------------- api + login
+let loginWaiters = [];
 async function api(path, opts = {}) {
   const headers = Object.assign({}, opts.headers || {});
-  if ($('token').value) headers['X-App-Token'] = $('token').value;
+  const tok = store.get('token'); if (tok) headers['X-App-Token'] = tok;
   if (opts.json !== undefined) { headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(opts.json); }
   const r = await fetch(path, { ...opts, headers });
+  if (r.status === 401) { await askLogin(); return api(path, opts); }
   const body = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(body.detail || r.statusText);
   return body;
 }
-const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const pct = v => v == null ? '–' : (v*100).toFixed(1) + '%';
-const num = (v, d=3) => v == null ? '–' : (Math.abs(v) < 1e-3 && v !== 0 ? v.toExponential(1) : v.toFixed(d));
-const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function askLogin() {
+  $('login').classList.add('open'); $('tokenInput').focus();
+  return new Promise(res => loginWaiters.push(res));
+}
+$('tokenSave').onclick = async () => {
+  const t = $('tokenInput').value.trim(); if (!t) return;
+  const r = await fetch('/api/data/summary', { headers:{ 'X-App-Token': t } });
+  if (r.status === 401) { $('loginErr').textContent = 'That password is not right. Please check it in Hostinger.'; return; }
+  store.set('token', t); $('login').classList.remove('open'); $('loginErr').textContent = '';
+  loginWaiters.splice(0).forEach(f => f());
+};
+$('tokenInput').onkeydown = e => { if (e.key === 'Enter') $('tokenSave').click(); };
+$('helpBtn').onclick = () => $('help').classList.add('open');
+$('helpClose').onclick = () => $('help').classList.remove('open');
+$('help').onclick = e => { if (e.target.id === 'help') $('help').classList.remove('open'); };
 
-async function waitJob(statusEl) {
-  for (;;) {
-    const j = await api('/api/job');
-    if (j.state === 'running') { statusEl.textContent = `Running ${j.kind}… (started ${j.started.slice(11,19)})`; await new Promise(r => setTimeout(r, 1500)); continue; }
-    if (j.state === 'error') throw new Error(j.error);
-    return j.result;
-  }
+async function waitJob(progEl, msgEl) {
+  progEl.style.display = 'block';
+  const t0 = Date.now();
+  try {
+    for (;;) {
+      const j = await api('/api/job');
+      if (j.state === 'running') {
+        msgEl.textContent = `${j.progress || 'Working'}… (${Math.round((Date.now()-t0)/1000)}s)`;
+        await new Promise(r => setTimeout(r, 1200)); continue;
+      }
+      if (j.state === 'error') throw new Error(j.error);
+      return j.result;
+    }
+  } finally { progEl.style.display = 'none'; }
 }
 
-// ---- data source
+// ---------------------------------------------------------------- plain-language conditions
+const GLYPH = {Sun:'☉',Moon:'☽',Mercury:'☿',Venus:'♀',Mars:'♂',Jupiter:'♃',Saturn:'♄',Rahu:'☊',Ketu:'☋',Uranus:'♅',Neptune:'♆',Pluto:'♇'};
+const ASPECT = {conjunct:'are together in the sky', sextile:'are 60° apart (harmonious)', square:'are 90° apart (tense)', trine:'are 120° apart (harmonious)', opposite:'are opposite each other (tense)'};
+function plain(c) {
+  let m;
+  if ((m = c.match(/^(\w+) in (\w+) nakshatra$/))) return `${m[1]} is in ${m[2]} nakshatra`;
+  if ((m = c.match(/^(\w+) in (\w+)$/))) return `${m[1]} is in ${m[2]}`;
+  if ((m = c.match(/^(\w+) retrograde$/))) return `${m[1]} is retrograde`;
+  if ((m = c.match(/^transit (\w+) (\w+) natal (\w+)$/))) return `${m[1]} ${ASPECT[m[2]].replace('are','is').replace('each other','')} natal ${m[3]}`;
+  if ((m = c.match(/^(\w+) (conjunct|sextile|square|trine|opposite) (\w+)$/))) return `${m[1]} and ${m[3]} ${ASPECT[m[2]]}`;
+  if ((m = c.match(/^Tithi (\d+) \((\w+)\)$/))) return `it is lunar day ${m[1]} (${m[2] === 'Shukla' ? 'waxing' : 'waning'} Moon)`;
+  if (c.startsWith('Shukla')) return 'the Moon is waxing';
+  if (c.startsWith('Krishna')) return 'the Moon is waning';
+  return c;
+}
+function glyphs(conds) {
+  const g = []; conds.forEach(c => Object.keys(GLYPH).forEach(p => { if (c.includes(p) && !g.includes(GLYPH[p])) g.push(GLYPH[p]); }));
+  return g.join(' ');
+}
+const joinAnd = a => a.length < 2 ? a.join('') : a.slice(0,-1).join(', ') + ' and ' + a.at(-1);
+
+// ---------------------------------------------------------------- step 1: market
+let CATALOG = [], priceChart;
+async function loadCatalog() {
+  try {
+    CATALOG = await api('/api/catalog');
+    $('symbolList').innerHTML = CATALOG.map(c => `<option value="${esc(c.name)} (${esc(c.symbol)})">${c.type === 'INDEX' ? 'Index' : 'Stock/ETF'} · from ${esc(c.daily_from)}</option>`).join('');
+    $('popular').innerHTML = '<span class="hint">Popular:</span> ' + CATALOG.filter(c => c.popular).slice(0, 8)
+      .map(c => `<button class="secondary" style="padding:6px 12px;font-size:14px" data-s="${esc(c.symbol)}">${esc(c.name)}</button>`).join('');
+    $('popular').querySelectorAll('button').forEach(b => b.onclick = () => loadMarket(b.dataset.s));
+  } catch (e) { $('loadErr').textContent = 'Could not reach the market library: ' + e.message; }
+}
+function pickedSymbol() {
+  const v = $('symbolSearch').value.trim(); if (!v) return null;
+  const m = v.match(/\(([^()]+)\)\s*$/); if (m) return m[1];
+  const hit = CATALOG.find(c => c.symbol.toLowerCase() === v.toLowerCase() || c.name.toLowerCase() === v.toLowerCase());
+  return hit ? hit.symbol : null;
+}
+$('loadBtn').onclick = () => {
+  const s = pickedSymbol();
+  if (!s) { $('loadErr').textContent = 'Pick a market from the list as you type.'; return; }
+  loadMarket(s);
+};
+async function loadMarket(sym) {
+  $('loadErr').textContent = ''; $('loadBtn').disabled = true;
+  try {
+    await api('/api/data/load_hf', { method:'POST', json:{ symbol:sym } });
+    await waitJob($('loadProg'), $('loadMsg'));
+    $('symbolSearch').value = '';
+    await refreshData(); await loadModel();
+  } catch (e) { $('loadErr').textContent = e.message; }
+  $('loadBtn').disabled = false;
+}
+let DATA = {};
+async function refreshData() {
+  DATA = await api('/api/data/summary');
+  if (!DATA.minutes) {
+    $('current').innerHTML = '<span>No market loaded yet. Choose one below. <b>Nifty 50</b> is a good start.</span>';
+    priceChart?.destroy(); updateQuestions(); return;
+  }
+  const ds = DATA.dataset || { name: 'Your data' };
+  const y0 = DATA.first.slice(0,4), y1 = DATA.last.slice(0,4);
+  $('current').innerHTML = `<div><div class="hint">Currently studying</div><div class="big">${esc(ds.name)}</div></div>
+    <div><span class="pill">${DATA.days.toLocaleString('en-IN')} trading days · ${y0}–${y1}</span>
+    ${DATA.intraday_from ? `<span class="pill">minute-by-minute since ${DATA.intraday_from.slice(0,4)}</span>` : ''}</div>`;
+  priceChart?.destroy();
+  const pts = DATA.daily_close;
+  priceChart = new Chart($('priceChart'), {
+    type:'line',
+    data:{ labels:pts.map(d => d.date), datasets:[{ data:pts.map(d => d.close), borderColor:css('--accent'), borderWidth:1.5, pointRadius:0, fill:false }] },
+    options:{ plugins:{ legend:{ display:false }, tooltip:{ mode:'index', intersect:false } }, interaction:{ mode:'index', intersect:false },
+      scales:{ x:{ ticks:{ maxTicksLimit:8, color:css('--muted'), callback:function(v){ return this.getLabelForValue(v).slice(0,4) } }, grid:{ display:false } },
+               y:{ ticks:{ color:css('--muted') }, grid:{ color:css('--line') } } } }
+  });
+  updateQuestions();
+}
+$('uploadBtn').onclick = async () => {
+  const f = $('csv').files[0]; if (!f) return;
+  const fd = new FormData(); fd.append('file', f);
+  try { await api('/api/data/upload?replace=true', { method:'POST', body:fd }); await refreshData(); $('srcMsg').textContent = 'Uploaded.'; }
+  catch (e) { $('srcMsg').textContent = e.message; }
+};
 let PRESETS = {};
 (async () => {
   try {
     PRESETS = await api('/api/source/presets');
     $('preset').innerHTML = Object.entries(PRESETS).map(([k,v]) => `<option value="${k}">${esc(v.name)}</option>`).join('');
-    const cur = await api('/api/source');
-    $('source').value = JSON.stringify(cur.source || PRESETS.zerodha_kite, null, 2);
-    if (cur.missing_env?.length) $('srcStatus').textContent = 'Missing server env vars: ' + cur.missing_env.join(', ');
-  } catch (e) { $('srcStatus').textContent = e.message; }
-  refreshData(); loadModel(); loadPositions(); loadEvents();
+    const cur = await api('/api/source'); $('source').value = JSON.stringify(cur.source || PRESETS.zerodha_kite, null, 2);
+  } catch {}
 })();
 $('loadPreset').onclick = () => $('source').value = JSON.stringify(PRESETS[$('preset').value], null, 2);
 $('saveSource').onclick = async () => {
-  try {
-    const r = await api('/api/source', { method:'PUT', json: JSON.parse($('source').value) });
-    $('srcStatus').textContent = 'Saved.' + (r.missing_env.length ? ' Missing server env vars: ' + r.missing_env.join(', ') : '');
-  } catch (e) { $('srcStatus').textContent = 'Error: ' + e.message; }
+  try { const r = await api('/api/source', { method:'PUT', json: JSON.parse($('source').value) });
+    $('srcMsg').textContent = 'Saved.' + (r.missing_env.length ? ' Missing on server: ' + r.missing_env.join(', ') : ''); }
+  catch (e) { $('srcMsg').textContent = e.message; }
 };
 $('fetchBtn').onclick = async () => {
-  $('fetchBtn').disabled = true;
-  try {
-    await api('/api/data/fetch', { method:'POST', json:{ start:$('fFrom').value, end:$('fTo').value + ' 23:59:59' } });
-    const r = await waitJob($('srcStatus'));
-    $('srcStatus').textContent = `Fetched ${r.fetched_minutes.toLocaleString()} minutes; ${r.stored_minutes.toLocaleString()} stored.`;
-    refreshData();
-  } catch (e) { $('srcStatus').textContent = 'Error: ' + e.message; }
-  $('fetchBtn').disabled = false;
+  try { await api('/api/data/fetch', { method:'POST', json:{ start:$('fFrom').value, end:$('fTo').value + ' 23:59:59' } });
+    await waitJob($('loadProg'), $('loadMsg')); await refreshData(); }
+  catch (e) { $('srcMsg').textContent = e.message; }
 };
-$('uploadBtn').onclick = async () => {
-  const f = $('csv').files[0]; if (!f) return;
-  const fd = new FormData(); fd.append('file', f);
-  $('dataStatus').textContent = 'Uploading…';
-  try {
-    const r = await api('/api/data/upload?replace=' + $('csvReplace').checked, { method:'POST', body:fd });
-    $('dataStatus').textContent = `Uploaded ${r.uploaded_minutes.toLocaleString()} minutes.`;
-    refreshData();
-  } catch (e) { $('dataStatus').textContent = 'Error: ' + e.message; }
-};
-$('clearBtn').onclick = async () => { if (confirm('Delete all stored price data?')) { await api('/api/data', { method:'DELETE' }); refreshData(); } };
 
-let priceChart;
-async function refreshData() {
-  try {
-    const s = await api('/api/data/summary');
-    if (!s.minutes) { $('dataStatus').textContent = 'No data loaded yet.'; priceChart?.destroy(); return; }
-    $('dataStatus').textContent = `${s.minutes.toLocaleString()} minutes · ${s.days} days · ${s.first.slice(0,16)} → ${s.last.slice(0,16)}`;
-    priceChart?.destroy();
-    priceChart = new Chart($('priceChart'), {
-      type:'line',
-      data:{ labels:s.daily_close.map(d => d.date), datasets:[{ data:s.daily_close.map(d => d.close), borderColor:css('--accent'), borderWidth:1.5, pointRadius:0 }] },
-      options:{ plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ maxTicksLimit:8, color:css('--muted') }, grid:{ display:false } }, y:{ ticks:{ color:css('--muted') }, grid:{ color:css('--line') } } } }
-    });
-  } catch (e) { $('dataStatus').textContent = e.message; }
+// ---------------------------------------------------------------- step 2: question
+const QUESTIONS = [
+  { id:'day', title:'Tomorrow: up or down?', text:'Does any planetary pattern tell whether the market closes higher or lower the next day?', s:{ bar:'1D', horizon:1, threshold_pct:0 }, rise:'closed higher the next day', fall:'closed lower the next day' },
+  { id:'week', title:'Next week: up or down?', text:'Does any pattern tell whether the coming week (5 trading days) ends higher or lower?', s:{ bar:'1D', horizon:5, threshold_pct:0, miner:{ min_support:15, min_support_validation:5 } }, rise:'was higher a week later', fall:'was lower a week later' },
+  { id:'big', title:'Big moves (over 1%)', text:'Do the planets line up with days of big jumps or big drops?', s:{ bar:'1D', horizon:1, threshold_pct:1 }, rise:'jumped more than 1% the next day', fall:'dropped more than 1% the next day' },
+  { id:'hour', title:'Within the day: next hour', text:'Does any pattern tell whether the next hour of trading rises or falls? Needs minute data.', s:{ bar:'60min', horizon:1, threshold_pct:0 }, rise:'rose in the next hour', fall:'fell in the next hour', intraday:true },
+];
+let qChoice = 'day';
+function updateQuestions() {
+  $('questions').innerHTML = QUESTIONS.map(q => `<button class="choice ${q.id===qChoice?'on':''}" data-q="${q.id}" ${q.intraday && !DATA.intraday_from ? 'disabled title="This market has no minute data"' : ''}><b>${q.title}</b><span>${q.text}</span></button>`).join('');
+  $('questions').querySelectorAll('.choice').forEach(b => b.onclick = () => { qChoice = b.dataset.q; updateQuestions(); });
 }
-
-// ---- analysis
+document.querySelectorAll('.toggle').forEach(t => t.querySelectorAll('button').forEach(b => b.onclick = () => {
+  t.querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on');
+}));
+const toggleVal = id => $(id).querySelector('.on').dataset.v;
 $('runBtn').onclick = async () => {
-  const miner = { max_depth:+$('depth').value, alpha:+$('alpha').value, null_runs:+$('nullRuns').value };
-  if ($('minSupport').value) { miner.min_support = +$('minSupport').value; miner.min_support_validation = Math.max(5, Math.round(miner.min_support/3)); }
-  const settings = { bar:$('bar').value, horizon:+$('horizon').value, threshold_pct:+$('threshold').value, zodiac:$('zodiac').value, miner };
+  $('runErr').textContent = '';
+  if (!DATA.minutes) { $('runErr').textContent = 'Load a market in step 1 first.'; return; }
+  const q = QUESTIONS.find(x => x.id === qChoice);
+  const settings = JSON.parse(JSON.stringify(q.s));
+  settings.zodiac = toggleVal('zodiac');
+  settings.miner = Object.assign({ max_depth:+toggleVal('depth'), null_runs:5, triple_beam:500 }, settings.miner || {});
+  settings.label = q.id;
   $('runBtn').disabled = true;
   try {
     await api('/api/analyze', { method:'POST', json:settings });
-    await waitJob($('runStatus'));
-    $('runStatus').textContent = '';
-    await loadModel();
-  } catch (e) { $('runStatus').textContent = 'Error: ' + e.message; }
+    await waitJob($('runProg'), $('runMsg'));
+    await loadModel(); loadHistory();
+    location.hash = ''; $('step3').scrollIntoView({ behavior:'smooth' });
+  } catch (e) { $('runErr').textContent = e.message; }
   $('runBtn').disabled = false;
 };
 
-let MODEL, ruleFilter = 'validated';
+// ---------------------------------------------------------------- step 3: answer
+let MODEL = null;
 async function loadModel() {
-  try { MODEL = await api('/api/model?limit=500'); } catch { return; }
-  renderModel();
+  try { MODEL = await api('/api/model?rules=validated&limit=60'); } catch { MODEL = null; }
+  renderAnswer();
 }
-function renderModel() {
-  const m = MODEL, r = m.result, t = r.test, s = r.search;
-  const kp = (v, l) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`;
-  const per = r.periods;
-  const statuses = ['validated','failed_validation','not_testable','redundant','all'];
-  const rows = r.rules.filter(x => ruleFilter === 'all' || x.status === ruleFilter);
-  $('results').innerHTML = `
-    <div class="verdict">${esc(r.verdict)}</div>
-    <div class="kpis">
-      ${kp(s.combinations_evaluated.toLocaleString(), 'combinations evaluated')}
-      ${kp(s.hypotheses_tested.toLocaleString(), 'hypotheses (both directions)')}
-      ${kp(s.discovery_significant, 'significant in discovery (FDR)')}
-      ${kp(s.validated_non_redundant ?? s.validated, 'validated on later data')}
-      ${kp(r.null_control.mean == null ? '–' : r.null_control.mean.toFixed(1), 'validated on time-shifted data (chance)')}
-      ${kp(t.signals ? pct(t.hit_rate) + ' vs ' + pct(t.chance_hit_rate) : '–', 'test hit rate vs chance')}
-      ${kp(t.signals ? 'p=' + num(t.p_value) : '–', `test significance (${t.signals || 0} signals)`)}
+const HEAD = {
+  none: ['○', 'No reliable planetary pattern found', n => `We tested ${fmt(n)} planetary combinations. None of them kept working on the newer years of data, so no planetary pattern can be trusted for this question.`],
+  luck: ['!', 'Some patterns appeared, but luck produces just as many', n => `A few of ${fmt(n)} combinations seemed to keep working, but the luck check found a similar number on meaningless data. Treat them as coincidences.`],
+  unconfirmed: ['?', 'Patterns held up, but failed the final test', n => `Some combinations kept working on the checking years, but when combined they did not beat chance on the newest years. Do not rely on them yet.`],
+  promising: ['✓', 'Promising patterns found', n => `Some combinations kept working on newer data and beat chance on the final test. Keep watching them on fresh data before trusting them with money.`],
+};
+function compareRow(label, rate, normal, color) {
+  if (rate == null) return `<div class="cmp"><span>${label.replace(/\s*\(0[^)]*\)/, '')}</span><span class="hint">did not happen</span><span></span></div>`;
+  return `<div class="cmp"><span>${label}</span><div class="b"><i style="width:${Math.round(rate*100)}%;background:${color}"></i><em style="left:${Math.round(normal*100)}%" title="normal ${pct(normal)}"></em></div><b>${pct(rate)}</b></div>`;
+}
+function renderAnswer() {
+  const box = $('answer');
+  if (!MODEL) { $('answerFor').textContent = 'Run a check in step 2 to see the answer here.'; box.innerHTML = '<div class="empty">No answer yet.</div>'; return; }
+  const r = MODEL.result, s = r.search, per = r.periods, q = QUESTIONS.find(x => x.id === MODEL.label) || QUESTIONS[0];
+  const lvl = r.verdict_level || (s.validated_non_redundant ? 'unconfirmed' : 'none');
+  const zod = MODEL.settings.zodiac === 'sidereal' ? 'Vedic' : 'Western';
+  $('answerFor').textContent = `${MODEL.dataset?.name || 'Market'} · "${q.title}" · ${zod} astrology · checked ${new Date(MODEL.created || Date.now()).toLocaleString('en-IN')}`;
+  const [icon, title, text] = HEAD[lvl];
+  const yr = p => p.start.slice(0,4) + '–' + p.end.slice(0,4);
+  const maxv = Math.max(s.hypotheses_tested, 1);
+  const w = v => Math.max(0.4, Math.min(100, Math.sqrt(v / maxv) * 100));   // square-root scale so small counts stay visible
+  const t = r.test || {};
+  const finalPassed = t.signals ? (t.p_value < 0.05 && t.hit_rate > t.chance_hit_rate ? 'Yes' : 'No') : '–';
+  const luck = s.luck;
+
+  // plain-language takeaways
+  const take = [];
+  take.push(`Normally, ${esc(MODEL.dataset?.name || 'the market')} ${q.rise} on about <b>${pct(per.discovery.baseline_up_rate)}</b> of days. A useful pattern has to do clearly better than that, and keep doing so.`);
+  if (luck) take.push(`Taken one at a time, <b>${luck.observed}</b> of the ${fmt(s.hypotheses_tested)} combinations looked impressive in the learning years (the kind of result that happens by chance only 1 time in 1,000). But with so many tries, luck alone produces about <b>${Math.round(luck.expected_by_chance)}</b> such results. ${luck.observed <= luck.expected_by_chance * 1.5 ? 'So these impressive-looking combinations are just what luck gives.' : 'That is more than luck alone usually gives, so it was worth checking them on newer years.'}`);
+  if (lvl === 'none' || lvl === 'luck') take.push('The planets did not give a reliable edge for this question. Changing the astrology system or the question may give different-looking patterns, but they go through the same checks.');
+  if (lvl === 'promising') take.push('The patterns below passed every check. Results from the past are no guarantee: re-check them as new data arrives.');
+
+  const bl = (r.best_looking || []).slice().sort((a,b) => a.p_discovery - b.p_discovery);
+  const best = [...bl.filter(b => b.later.days >= 10), ...bl.filter(b => b.later.days < 10)].slice(0, 6);
+  const bestCards = best.map(b => {
+    const rise = b.direction === 'bullish';
+    const later = b.later.rate, normal = b.later.normal_rate;
+    const tag = b.later.days === 0 ? '<span class="tag gone">Never happened again</span>'
+      : (later - normal > 0.05 ? '<span class="tag held">Still above normal later</span>' : '<span class="tag faded">Faded away later</span>');
+    return `<div class="pcard"><div class="glyphs">${glyphs(b.conditions)}</div>
+      <div class="sentence">When ${esc(joinAnd(b.conditions.map(plain)))}, the market ${rise ? q.rise : q.fall}…</div>
+      ${compareRow(`Learning years (${b.past.days} days)`, b.past.rate, b.past.normal_rate, rise ? css('--up') : css('--down'))}
+      ${compareRow(`Later years (${b.later.days} days)`, later, normal, css('--grey'))}
+      ${tag}</div>`;
+  }).join('');
+
+  const rules = (r.rules || []).filter(x => x.status === 'validated');
+  const ruleCards = rules.map(x => {
+    const rise = x.direction === 'bullish', st = x.stats, key = rise ? 'up_rate' : 'down_rate', base = rise ? 'baseline_up_rate' : 'baseline_down_rate';
+    return `<div class="pcard"><div class="glyphs">${glyphs(x.conditions)}</div>
+      <div class="sentence">When ${esc(joinAnd(x.conditions.map(plain)))}, the market ${rise ? q.rise : q.fall}…</div>
+      ${compareRow(`Learning years (${st.discovery.bars})`, st.discovery[key], per.discovery[base], rise ? css('--up') : css('--down'))}
+      ${compareRow(`Checking years (${st.validation.bars})`, st.validation[key], per.validation[base], rise ? css('--up') : css('--down'))}
+      ${compareRow(`Final test (${st.test.bars})`, st.test[key], per.test[base], rise ? css('--up') : css('--down'))}
+      <span class="tag ${rise ? 'held' : 'fall'}">${rise ? '▲ Points to a rise' : '▼ Points to a fall'}</span></div>`;
+  }).join('');
+
+  box.innerHTML = `
+    <div class="verdict v-${lvl}"><div class="light">${icon}</div><div><h3>${title}</h3><p>${text(s.hypotheses_tested)}</p></div></div>
+
+    <h4>How we checked</h4>
+    <div class="timeline">
+      <div class="t1" style="flex:${per.discovery.bars}"><b>Learning years</b>${yr(per.discovery)}</div>
+      <div class="t2" style="flex:${per.validation.bars}"><b>Checking years</b>${yr(per.validation)}</div>
+      <div class="t3" style="flex:${per.test.bars}"><b>Final test</b>${yr(per.test)}</div>
     </div>
-    <p class="note">Settings: ${esc(m.settings.bar)} bars, horizon ${m.settings.horizon}, threshold ${m.settings.threshold_pct}%, ${esc(m.settings.zodiac)} · ${r.bars.toLocaleString()} bars · ${r.conditions_considered} distinct conditions ·
-      discovery ${per.discovery.start.slice(0,10)}→${per.discovery.end.slice(0,10)}, validation →${per.validation.end.slice(0,10)}, test →${per.test.end.slice(0,10)} · ran in ${m.runtime_seconds}s</p>
-    <div class="tabs">${statuses.map(x => `<button class="${x===ruleFilter?'on':''}" data-f="${x}">${x.replace('_',' ')} (${x==='all'?r.rules.length:r.rules.filter(y=>y.status===x).length})</button>`).join('')}</div>
-    <div class="tablewrap"><table>
-      <thead><tr><th>Signal</th><th>Planetary combination</th><th>Status</th><th>Discovery<br>bars · up% · q</th><th>Validation<br>bars · up% · q</th><th>Test<br>bars · up% · avg ret</th><th>Weight</th></tr></thead>
-      <tbody>${rows.map(x => {
-        const d = x.stats.discovery, v = x.stats.validation, te = x.stats.test;
-        return `<tr><td class="${x.direction==='bullish'?'pos':'neg'}">${x.direction==='bullish'?'▲ Positive':'▼ Negative'}</td>
-          <td>${x.conditions.map(c => `<span class="chip">${esc(c)}</span>`).join(' ')}</td>
-          <td>${x.status.replace('_',' ')}</td>
-          <td>${d.bars} · ${pct(d.up_rate)} · ${num(x.q_discovery)}</td>
-          <td>${v.bars} · ${pct(v.up_rate)} · ${num(x.q_validation)}</td>
-          <td>${te.bars} · ${pct(te.up_rate)} · ${te.mean_return_pct==null?'–':te.mean_return_pct.toFixed(3)+'%'}</td>
-          <td>${x.weight.toFixed(3)}</td></tr>`;
-      }).join('') || '<tr><td colspan="7" class="muted">No rules in this category.</td></tr>'}</tbody>
-    </table></div>
-    <p class="note">Baseline up-rate: discovery ${pct(per.discovery.baseline_up_rate)}, validation ${pct(per.validation.baseline_up_rate)}, test ${pct(per.test.baseline_up_rate)}. A rule only matters if its up% differs clearly from the baseline of the same period.</p>`;
-  $('results').querySelectorAll('.tabs button').forEach(b => b.onclick = () => { ruleFilter = b.dataset.f; renderModel(); });
+    <div class="funnel" style="margin-top:14px">
+      <div class="frow"><div class="t">Planetary combinations tested<small>every sign, nakshatra, retrograde, angle and lunar day, alone and in groups</small></div><div class="fbar"><i style="width:${w(s.hypotheses_tested)}%"></i><span>${fmt(s.hypotheses_tested)}</span></div></div>
+      <div class="frow"><div class="t">Still looked strong after allowing for the number of tests<small>learning years only</small></div><div class="fbar"><i style="width:${w(s.discovery_significant)}%"></i><span>${fmt(s.discovery_significant)}${s.discovery_significant >= (MODEL.settings.miner.max_candidates || 2000) ? '+' : ''}</span></div></div>
+      <div class="frow"><div class="t">Kept working in the checking years</div><div class="fbar"><i style="width:${w(s.validated_non_redundant)}%"></i><span>${fmt(s.validated_non_redundant)}</span></div></div>
+      <div class="frow"><div class="t">Passed the final test<small>newest years, never used for searching</small></div><div class="fbar"><i style="width:${finalPassed === 'Yes' ? w(s.validated_non_redundant) : 0}%"></i><span>${finalPassed}</span></div></div>
+      <div class="frow"><div class="t">Luck check: "kept working" on meaningless data<small>average of ${r.null_control.runs} runs; real patterns must clearly beat this</small></div><div class="fbar luck"><i style="width:${w(r.null_control.mean || 0)}%"></i><span>${r.null_control.mean == null ? '–' : r.null_control.mean.toFixed(1)}</span></div></div>
+    </div>
+
+    <h4>What this means</h4>
+    <ul class="take">${take.map(x => `<li>${x}</li>`).join('')}</ul>
+
+    ${rules.length ? `<h4>${lvl === 'promising' ? 'Patterns that passed every check' : lvl === 'luck' ? 'Patterns that kept working, but no better than luck' : 'Patterns that kept working, but are not confirmed'}</h4><p class="hint">The bar shows how often it happened; the thin line marks what is normal.${lvl === 'promising' ? '' : ' Shown so you can see them, not to rely on.'}</p><div class="cards">${ruleCards}</div>` : ''}
+
+    ${best.length ? `<h4>The strongest-looking patterns, and what happened next</h4>
+      <p class="hint">These are the combinations that looked most impressive in the learning years. The thin line marks what is normal. Watch whether the bar stays above it in the later years.</p>
+      <div class="cards">${bestCards}</div>` : ''}
+
+    <details><summary>Technical details</summary><p class="hint" style="margin-top:8px">${esc(r.verdict)}</p>
+      <p class="hint">${fmt(r.bars)} bars of ${esc(MODEL.settings.bar)}, horizon ${MODEL.settings.horizon}, threshold ${MODEL.settings.threshold_pct}%, ${esc(MODEL.settings.zodiac)} zodiac, depth ${MODEL.settings.miner.max_depth}, false-discovery level ${MODEL.settings.miner.alpha}. Final test: ${t.signals ? `${t.signals} signals, hit rate ${pct(t.hit_rate)} vs ${pct(t.chance_hit_rate)} by chance (p=${t.p_value.toPrecision(2)})` : 'no signals'}. Took ${MODEL.runtime_seconds}s.</p></details>`;
 }
 
-// ---- forecast
-let fcChart;
-$('forecastBtn').onclick = async () => {
-  $('fcStatus').textContent = 'Computing…';
+// ---------------------------------------------------------------- step 4: ahead
+$('forecastBtn').onclick = () => { renderForecast(); loadEvents(); };
+$('allEvents').onchange = () => loadEvents();
+async function renderForecast() {
+  const box = $('forecast');
+  if (!MODEL) { box.innerHTML = '<div class="empty">Run a check in step 2 first.</div>'; return; }
+  const n = (MODEL.result.rules || []).filter(x => x.status === 'validated').length;
+  const exp = $('expToggle')?.checked;
+  if (!n && !exp) {
+    box.innerHTML = `<div class="empty">No pattern passed the checks for this question, so there is <b>no trustworthy forecast</b>. Upcoming planetary events are listed below for reference.<br><label style="display:inline-block;margin-top:8px"><input type="checkbox" id="expToggle"> Show experimental signals anyway (not reliable)</label></div>`;
+    $('expToggle').onchange = renderForecast; return;
+  }
   try {
-    const f = await api(`/api/forecast?start=${$('pFrom').value}&end=${$('pTo').value}&include=${$('pInclude').value}`);
-    $('fcStatus').textContent = `${f.rules_used} rules applied · ${f.points.length} bars · ${f.note || ''}`;
-    renderForecast(f);
-    loadEvents();
-  } catch (e) { $('fcStatus').textContent = 'Error: ' + e.message; }
-};
-function renderForecast(f) {
-  if (!f.points.length) { $('forecast').innerHTML = ''; return; }
-  const daily = f.bar.toUpperCase() === '1D';
-  const cells = f.points.map(p => {
-    const tip = p.rules.map(r => (r.direction==='bullish'?'▲ ':'▼ ') + r.conditions.join(' + ')).join('\n') || 'no rule active';
-    const lbl = daily ? p.time.slice(5,10) : p.time.slice(5,16).replace('T',' ');
-    const cls = p.signal==='POSITIVE'?'pos':p.signal==='NEGATIVE'?'neg':'neu';
-    return `<div class="day ${p.signal}" title="${esc(tip)}">${lbl}<br><span class="${cls}">${p.signal==='POSITIVE'?'▲':p.signal==='NEGATIVE'?'▼':'·'} ${p.score}</span></div>`;
-  }).join('');
-  $('forecast').innerHTML = `<canvas id="fcChart"></canvas><p class="note">Hover a cell to see which planetary rules fired.</p><div class="cal">${cells}</div>`;
-  fcChart?.destroy();
-  fcChart = new Chart($('fcChart'), {
-    type:'bar',
-    data:{ labels:f.points.map(p => daily ? p.time.slice(0,10) : p.time.slice(0,16)), datasets:[{ data:f.points.map(p => p.score), backgroundColor:f.points.map(p => p.score>0?css('--pos'):p.score<0?css('--neg'):css('--neu')) }] },
-    options:{ plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ maxTicksLimit:10, color:css('--muted') }, grid:{ display:false } }, y:{ title:{ display:true, text:'signal score', color:css('--muted') }, ticks:{ color:css('--muted') }, grid:{ color:css('--line') } } } }
-  });
+    const f = await api(`/api/forecast?start=${$('pFrom').value}&end=${$('pTo').value}&include=${n ? 'validated' : 'all'}`);
+    const daily = f.bar.toUpperCase() === '1D';
+    box.innerHTML = `${!n ? '<p class="err">Experimental: these signals come from patterns that did <b>not</b> pass the checks.</p>' : ''}
+      <div class="legend"><span><i style="background:var(--up-soft)"></i>Patterns point up</span><span><i style="background:var(--down-soft)"></i>Patterns point down</span><span><i style="background:var(--bg);border:1px solid var(--line)"></i>No pattern active</span></div>
+      <div class="cal">${f.points.map(p => {
+        const d = new Date(p.time);
+        const lbl = daily ? d.toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short' }) : d.toLocaleString('en-IN', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+        const tip = p.rules.map(r => (r.direction === 'bullish' ? '▲ ' : '▼ ') + joinAnd(r.conditions.map(plain))).join('\n') || 'No pattern active';
+        const word = p.signal === 'POSITIVE' ? '▲ Up' : p.signal === 'NEGATIVE' ? '▼ Down' : '·';
+        return `<div class="day ${p.signal}" title="${esc(tip)}"><b>${lbl}</b>${word}</div>`;
+      }).join('')}</div>
+      <p class="hint">Tap or hover a day to see which planetary pattern is behind it. Market holidays are not removed.</p>`;
+    if (!n) { const lab = document.createElement('label'); lab.innerHTML = '<input type="checkbox" id="expToggle" checked> Show experimental signals'; box.prepend(lab); $('expToggle').onchange = renderForecast; }
+  } catch (e) { box.innerHTML = `<p class="err">${esc(e.message)}</p>`; }
 }
 async function loadEvents() {
   try {
-    const ev = await api(`/api/events?start=${$('pFrom').value}&end=${$('pTo').value}&zodiac=${MODEL?.settings.zodiac || 'sidereal'}`);
-    $('events').innerHTML = '<thead><tr><th>When (IST)</th><th>Event</th></tr></thead><tbody>' +
-      ev.map(e => `<tr><td>${e.time.slice(0,16).replace('T',' ')}</td><td>${esc(e.text)}</td></tr>`).join('') + '</tbody>';
+    const zod = MODEL?.settings.zodiac || 'sidereal';
+    const SLOW = ['Mars','Jupiter','Saturn','Rahu','Ketu','Uranus','Neptune','Pluto'];
+    let ev = await api(`/api/events?start=${$('pFrom').value}&end=${$('pTo').value}&zodiac=${zod}`);
+    if (!$('allEvents').checked) ev = ev.filter(e => e.type !== 'aspect' || e.body.split('/').every(b => SLOW.includes(b)));
+    const icon = { ingress:'➜', station:'↺', aspect:'∠' };
+    const pretty = e => {
+      let m;
+      if ((m = e.text.match(/^(\w+) enters (\w+)$/))) return `${GLYPH[m[1]] || ''} ${m[1]} moves into ${m[2]}`;
+      if ((m = e.text.match(/^(\w+) stations (\w+)$/))) return `${GLYPH[m[1]] || ''} ${m[1]} ${m[2] === 'retrograde' ? 'starts moving backwards (retrograde)' : 'moves forward again (direct)'}`;
+      if ((m = e.text.match(/^(\w+) (\w+) (\w+) \(exact\)$/))) return `${GLYPH[m[1]] || ''}${GLYPH[m[3]] || ''} ${m[1]} and ${m[3]} ${ASPECT[m[2]]}, exactly`;
+      return e.text;
+    };
+    $('events').innerHTML = '<thead><tr><th>When</th><th>What happens in the sky</th></tr></thead><tbody>' +
+      (ev.length ? ev.map(e => `<tr><td style="white-space:nowrap">${new Date(e.time).toLocaleString('en-IN', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}</td><td>${icon[e.type] || ''} ${esc(pretty(e))}</td></tr>`).join('')
+        : '<tr><td colspan="2" class="hint">Nothing notable in this period.</td></tr>') + '</tbody>';
   } catch (e) { $('events').innerHTML = `<tr><td>${esc(e.message)}</td></tr>`; }
 }
-async function loadPositions() {
+async function loadPlanets() {
   try {
-    const p = await api('/api/positions?zodiac=' + (MODEL?.settings.zodiac || 'sidereal'));
-    $('positions').innerHTML = `<thead><tr><th>Body</th><th>Sign</th><th>Degree</th><th>Nakshatra</th><th>Motion</th><th>Speed °/day</th></tr></thead><tbody>` +
-      p.bodies.map(b => `<tr><td>${b.body}</td><td>${b.sign}</td><td>${b.degree_in_sign}°</td><td>${b.nakshatra}</td><td>${b.retrograde?'<span class="neg">Retrograde</span>':'Direct'}</td><td>${b.speed_deg_per_day}</td></tr>`).join('') +
-      `</tbody><caption class="note" style="caption-side:bottom;text-align:left">${p.zodiac} zodiac · ${p.time.slice(0,16).replace('T',' ')} IST</caption>`;
+    const zod = MODEL?.settings.zodiac || 'sidereal';
+    const p = await api('/api/positions?zodiac=' + zod);
+    $('planets').innerHTML = p.bodies.map(b => `<div class="planet"><div class="g">${GLYPH[b.body] || ''}</div><b>${b.body}</b><br>${b.sign} ${Math.floor(b.degree_in_sign)}°<br><span class="hint">${b.nakshatra} nakshatra</span>${b.retrograde ? '<br><span class="retro">moving backwards</span>' : ''}</div>`).join('');
   } catch {}
 }
+
+// ---------------------------------------------------------------- history
+async function loadHistory() {
+  try {
+    const h = await api('/api/history');
+    const col = { none:'--grey', luck:'--amber', unconfirmed:'--amber', promising:'--up' };
+    const word = { none:'No reliable pattern', luck:'Only luck-level patterns', unconfirmed:'Not confirmed', promising:'Promising' };
+    $('history').innerHTML = h.length ? '<thead><tr><th>When</th><th>Market</th><th>Question</th><th>System</th><th>Tested</th><th>Result</th></tr></thead><tbody>' +
+      h.map(x => `<tr><td style="white-space:nowrap">${new Date(x.created).toLocaleDateString('en-IN', { day:'numeric', month:'short' })}</td><td>${esc(x.market || '')}</td><td>${esc((QUESTIONS.find(q => q.id === x.label) || {}).title || x.bar)}</td><td>${x.zodiac === 'sidereal' ? 'Vedic' : 'Western'}</td><td>${fmt(x.tested)}</td><td><span class="dot" style="background:var(${col[x.level] || '--grey'})"></span>${word[x.level] || ''}</td></tr>`).join('') + '</tbody>'
+      : '<tr><td class="hint">No checks yet.</td></tr>';
+  } catch {}
+}
+
+// ---------------------------------------------------------------- start
+(async () => {
+  await refreshData().catch(e => $('current').textContent = e.message);
+  loadCatalog(); await loadModel(); loadHistory(); loadPlanets(); loadEvents(); renderForecast();
+})();
 </script>
 </body>
 </html>
