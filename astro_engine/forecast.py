@@ -52,7 +52,7 @@ def forecast(model: dict, start, end, include: str = "validated") -> dict:
     }
 
 
-def astro_events(start, end, zodiac: str = "sidereal", include_moon: bool = False) -> list[dict]:
+def astro_events(start, end, zodiac: str = "sidereal", include_moon: bool = False, astro: dict | None = None) -> list[dict]:
     """Sign ingresses, retrograde/direct stations and exact major aspects."""
     start = pd.Timestamp(start)
     end = pd.Timestamp(end)
@@ -61,9 +61,13 @@ def astro_events(start, end, zodiac: str = "sidereal", include_moon: bool = Fals
     times = pd.date_range(start, end, freq="1h")
     if len(times) < 2:
         return []
-    pos = compute_positions(times, zodiac)
+    if astro:
+        from .pipeline import astro_kwargs
+        pos = compute_positions(times, **astro_kwargs({"astro": astro}))
+    else:
+        pos = compute_positions(times, zodiac)
     lon, spd = pos.longitude, pos.speed
-    bodies = [b for b in BODIES if include_moon or b != "Moon"]
+    bodies = [b for b in lon.columns if include_moon or b != "Moon"]
     events = []
 
     for b in bodies:

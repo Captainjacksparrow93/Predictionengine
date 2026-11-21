@@ -33,6 +33,9 @@ class MinerConfig:
     min_support_validation: int = 10
     alpha: float = 0.05              # FDR level at discovery
     alpha_validation: float = 0.10   # FDR level at validation
+    discovery_method: str = "fdr"    # "fdr" (Benjamini-Hochberg) or "raw" (plain p-value, no correction)
+    validation_method: str = "fdr"   # same choice for the checking years
+    min_lift: float = 0.0            # rate must beat normal by at least this (0.05 = 5 points)
     split: tuple[float, float] = (0.6, 0.2)  # discovery, validation share; rest = test
     triple_beam: int = 300           # best pairs extended to triples when max_depth = 3
     max_candidates: int = 2000       # discovery survivors carried to validation
@@ -204,7 +207,11 @@ def _discover_validate(X, up, down, r, d_end, v_end, cfg: MinerConfig, detail: b
 
     disc = []
     for direction, q, pv in (("bullish", q_bull, p_bull), ("bearish", q_bear, p_bear)):
-        for idx in np.nonzero(q <= cfg.alpha)[0]:
+        crit = q if cfg.discovery_method == "fdr" else pv
+        base = p_up0 if direction == "bullish" else p_dn0
+        hits = cands.k_up if direction == "bullish" else cands.k_down
+        lift_ok = hits / np.maximum(cands.n, 1) - base >= cfg.min_lift
+        for idx in np.nonzero((crit <= cfg.alpha) & lift_ok & supported)[0]:
             disc.append((float(pv[idx]), float(q[idx]), int(idx), direction))
     disc.sort()
     disc = disc[: cfg.max_candidates]
@@ -234,7 +241,8 @@ def _discover_validate(X, up, down, r, d_end, v_end, cfg: MinerConfig, detail: b
         results[i]["status"] = "not_testable"
     for qi, i in enumerate(testable):
         results[i]["q_validation"] = float(qv[qi])
-        results[i]["status"] = "validated" if qv[qi] <= cfg.alpha_validation else "failed_validation"
+        crit = qv[qi] if cfg.validation_method == "fdr" else results[i]["p_validation"]
+        results[i]["status"] = "validated" if crit <= cfg.alpha_validation else "failed_validation"
 
     summary = {
         "combinations_evaluated": n_combos,
